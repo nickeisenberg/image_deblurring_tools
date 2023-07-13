@@ -42,17 +42,19 @@ class Bennett:
 class Model:
 
     def __init__(self):
-        self.reg = {'erf': Erf, 'bennett': Bennett, 'arctan': Arctan}
-        self.reg_counts = {'erf': 0, 'bennett': 0, 'arctan': 0}
-        self.weights = {
-            'erf': np.zeros(2), 'bennett': np.zeros(2), 'arctan': np.zeros(2)}
-    
-    def add(self, count, reg_type):
+        self.reg = {}
+        self.reg_counts = {}
+        self.weights = {}
+
+    def add(self, count, reg_class, reg_name):
         """
-        reg_type: erf, arctan, bennett
+        reg_type: erf, arctan, bennett, custom
         """
-        self.reg_counts[reg_type] += count
-        self.weights[reg_type] = np.zeros((self.reg_counts[reg_type], 2))
+        self.reg[reg_name] = reg_class
+        try:
+            self.reg_counts[reg_name] += count
+        except:
+            self.reg_counts[reg_name] = count
 
         return None
 
@@ -60,10 +62,9 @@ class Model:
         
         if weights == None:
             total = np.array([*self.reg_counts.values()]).sum()
-            for rt in self.weights.keys():
-                if self.weights[rt] is None:
-                    continue
-                self.weights[rt] += [1 / total, 1]
+            for rt, count in self.reg_counts.items():
+                self.weights[rt] = np.ones((count, 2)) * [1 / total, 1]
+
 
     def esf(self, x):
         esf_ = 0 
@@ -87,9 +88,9 @@ class Model:
 
 model = Model()
 
-model.add(3, 'bennett')
-model.add(2, 'erf')
-model.add(10, 'arctan')
+model.add(3,  Bennett, 'bennett',)
+model.add(2, Erf, 'erf')
+model.add(10, Arctan, 'arctan')
 
 model.initialize()
 

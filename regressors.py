@@ -157,4 +157,5 @@ model_psf = model.psf(np.linspace(-10, 10, 1000))
 plt.plot(model_psf)
 plt.plot(model_esf)
 plt.show()
-#--------------------------------------------------
+
+model.weights

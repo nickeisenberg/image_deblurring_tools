@@ -49,15 +49,11 @@ class Model:
         self.weights_vec = np.array([])
 
     def add(self, count, reg_class, reg_name):
-        """
-        reg_type: erf, arctan, bennett, custom
-        """
         self.reg[reg_name] = reg_class
         try:
             self.reg_counts[reg_name] += count
         except:
             self.reg_counts[reg_name] = count
-
         return None
 
     def initialize(self, weights=None):
@@ -76,10 +72,9 @@ class Model:
                 [*weights.values()]
             ).reshape(-1)
 
+        return None
+
     def add_initialize(self, count, weights, reg_class, reg_name):
-        """
-        reg_type: erf, arctan, bennett, custom
-        """
 
         self.reg[reg_name] = reg_class
 
@@ -101,6 +96,7 @@ class Model:
             )
         except:
             self.weights_vec = weights.reshape(-1)
+
 
     def esf(self, x):
         esf_ = 0 
@@ -154,8 +150,8 @@ model.initialize(weights=weights)
 model_esf = model.esf(np.linspace(-10, 10, 1000))
 model_psf = model.psf(np.linspace(-10, 10, 1000))
 
-plt.plot(model_psf)
-plt.plot(model_esf)
-plt.show()
+model.reg
 
-model.weights
+model.weights_vec
+
+model._weights_vec_id

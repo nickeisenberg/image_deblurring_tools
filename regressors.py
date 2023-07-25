@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import erf as _erf
 from copy import deepcopy
+from scipy.optimize import minimize
+from copy import deepcopy
 
 class Erf:
     def __init__(self, a=1, b=1):
@@ -47,6 +49,7 @@ class Model:
         self.reg_counts = {}
         self.weights = {}
         self.weights_vec = np.array([])
+        self.weights_vec_id = np.array([])
 
     def add(self, count, reg_class, reg_name):
         self.reg[reg_name] = reg_class
@@ -54,11 +57,14 @@ class Model:
             self.reg_counts[reg_name] += count
         except:
             self.reg_counts[reg_name] = count
-        return None
 
     def initialize(self, weights=None):
         
         if weights == None:
+            ids = []
+            for rn, count in self.reg_counts.items():
+                ids.append(np.repeat(rn, count))
+            self.weights_vec_id = np.hstack(ids)
             total = np.array([*self.reg_counts.values()]).sum()
             for rt, count in self.reg_counts.items():
                 self.weights[rt] = np.ones((count, 2)) * [1 / total, 1]
@@ -68,9 +74,13 @@ class Model:
 
         else:
             self.weights = weights
-            self.weights_vec = np.vstack(
-                [*weights.values()]
-            ).reshape(-1)
+            ids = []
+            ws = []
+            for rn, w in self.weights.items():
+                ids.append(np.repeat(rn, self.reg_counts[rn]))
+                ws.append(w)
+            self.weights_vec_id = np.hstack(ids)
+            self.weights_vec = np.array(ws).reshape(-1)
 
         return None
 
@@ -80,44 +90,61 @@ class Model:
 
         try:
             self.reg_counts[reg_name] += count
-        except:
-            self.reg_counts[reg_name] = count
-
-        try:
             self.weights[reg_name] = np.vstack(
                 (self.weights[reg_name], weights)
             )
         except:
+            self.reg_counts[reg_name] = count
             self.weights[reg_name] = weights
 
         try:
             self.weights_vec = np.hstack(
                 (self.weights_vec, weights.reshape(-1))
             )
+            self.weights_vec_id = np.hstack(
+                (self.weights_vec_id, np.repeat(reg_name, count))
+            )
         except:
             self.weights_vec = weights.reshape(-1)
-
+            self.weights_vec_id = np.repeat(reg_name, count)
 
     def esf(self, x):
         esf_ = 0 
-        for rt, W in self.weights.items():
-            if self.reg_counts[rt] == 0:
+        for w, rn in zip(
+            self.weights_vec.reshape((-1, 2)), self.weights_vec_id
+        ):
+            if self.reg_counts[rn] == 0:
                 continue
-            for w in W:
-                esf_ += self.reg[rt](*list(w)).esf(x)
+            esf_ += self.reg[rn](*list(w)).esf(x)
         return esf_
 
     def psf(self, r):
         psf_ = 0 
-        for rt, W in self.weights.items():
+        for w, rn in zip(
+            self.weights_vec.reshape((-1, 2)), self.weights_vec_id
+        ):
             if self.reg_counts[rt] == 0:
                 continue
-            for w in W:
-                psf_ += self.reg[rt](*list(w)).psf(r)
+            psf_ += self.reg[rn](*list(w)).psf(r)
         return psf_
 
-# Testing the classes
+    def fit_to_esf(self, data, domain=None):
+        if domain is None:
+            domain = np.linspace(
+                -int(data.size / 2), int(data.size / 2), data.size
+            )
 
+        def _loss(P, data=data, domain=domain, ids=self.weights_vec_id):
+            residual = np.zeros(domain.size)
+            for w, rn in zip(P.reshape((-1, 2)), ids):
+                residual += self.reg[rn](*list(w)).esf(domain)
+            residual = np.abs(residual - data)
+            return np.sum(residual)
+
+        self.weights_vec = minimize(_loss, self.weights_vec).x
+        return None
+
+# Testing the classes
 #--------------------------------------------------
 model = Model()
 
@@ -127,11 +154,17 @@ model.add_initialize(2, erf_weights, Erf, 'erf')
 at_weights = np.array([[.25, 1], [.25, 1]])
 model.add_initialize(2, at_weights, Arctan, 'arctan')
 
-model_esf = model.esf(np.linspace(-10, 10, 1000))
-model_psf = model.psf(np.linspace(-10, 10, 1000))
+domain = np.linspace(-5, 5, 1000)
+data = 2.1 * np.arctan(2 * (domain)) + np.random.normal(0, .3, 1000)
+m, M = data.min(), data.max()
+data -= m
+data /= (M - m)
 
-plt.plot(model_psf)
-plt.plot(model_esf)
+model.fit_to_esf(data, domain)
+model.fit_to_esf(data, domain)
+
+plt.plot(data)
+plt.plot(model.esf(domain))
 plt.show()
 #--------------------------------------------------
 
@@ -140,18 +173,25 @@ model = Model()
 
 model.add(2, Erf, 'erf')
 model.add(2, Arctan, 'arctan')
+model.add(2, Erf, 'erf')
 
-weights = {
-    'erf': np.array([[2, 1], [1, 1]]),
-    'arctan': np.array([[.2, 1], [2, 22]]),
-}
-model.initialize(weights=weights)
+# weights = {
+#     'erf': np.array([[2, 1], [1, 1], [.2, .2], [1, 44]]),
+#     'arctan': np.array([[.2, 1], [2, 22]]),
+# }
+# model.initialize(weights=weights)
 
-model_esf = model.esf(np.linspace(-10, 10, 1000))
-model_psf = model.psf(np.linspace(-10, 10, 1000))
+model.initialize()
 
-model.reg
+domain = np.linspace(-5, 5, 1000)
+data = 2.1 * np.arctan(2 * (domain)) + np.random.normal(0, .3, 1000)
+m, M = data.min(), data.max()
+data -= m
+data /= (M - m)
 
-model.weights_vec
+model.fit_to_esf(data, domain)
+model.fit_to_esf(data, domain)
 
-model._weights_vec_id
+plt.plot(data)
+plt.plot(model.esf(domain))
+plt.show()

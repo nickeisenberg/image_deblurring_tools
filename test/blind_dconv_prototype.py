@@ -32,7 +32,6 @@ model.fit_nonblind(
     np.linspace(-10, 10, 1000),
 )
 
-
 blur_est = cv2.filter2D(
     src=img,
     ddepth=-1,

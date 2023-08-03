@@ -23,7 +23,7 @@ def median_filt(image, win_r, win_c):
 shape = create.Image(1000, 1000)
 shape.square(2, [200, 700], [100, 400])
 shape.circle(1, (700, 700), 200)
-img_n = shape.img + np.random.normal(0, .2, (1000, 1000))
+img_n = shape.img + np.random.normal(0, .15, (1000, 1000))
 
 fig, ax = plt.subplots(1, 3)
 ax[0].imshow(shape.img)

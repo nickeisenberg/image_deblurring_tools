@@ -7,7 +7,14 @@ from copy import deepcopy
 
 import regressors as reg
 
+# make data
+domain = np.linspace(-5, 5, 1000)
+data = 2.1 * np.arctan(2 * (domain)) + np.random.normal(0, .3, 1000)
+m, M = data.min(), data.max()
+data -= m
+data /= (M - m)
 
+# make model
 model = reg.Model()
 
 erf_weights = np.array([[.25, 1], [.25, 1]])
@@ -16,19 +23,11 @@ model.add_initialize(2, erf_weights, reg.Erf, 'erf')
 at_weights = np.array([[.25, 1], [.25, 1]])
 model.add_initialize(2, at_weights, reg.Arctan, 'arctan')
 
-domain = np.linspace(-5, 5, 1000)
-data = 2.1 * np.arctan(2 * (domain)) + np.random.normal(0, .3, 1000)
-m, M = data.min(), data.max()
-data -= m
-data /= (M - m)
-
 model.fit_to_esf(data, domain)
-
 model.fit_to_esf(data, domain)
 
 plt.plot(reg.Arctan(*model.weights['arctan'][1]).esf(np.linspace(-5, 5, 100)))
 plt.show()
-
 
 plt.imshow(model.kernel(50, 50))
 plt.show()

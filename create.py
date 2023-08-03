@@ -12,18 +12,18 @@ class Image:
 
     def square(self, val, width_loc, height_loc):
         self.img[width_loc[0]: width_loc[1], height_loc[0]: height_loc[1]] += val
-
+    
     def circle(self, val, center, radius):
         for C, R in zip(self.grid[0], self.grid[1]):
             for r, c in zip(R, C):
                 if (r - center[0]) ** 2 + (c - center[1]) ** 2 <= radius ** 2:
                     self.img[r, c] += val
 
+
 class Blur:
 
     def __init__(self, img):
         self.img = img
-    
 
     # def gaussian(self, mu, std, dim_len, return_kernel=False):
     def gaussian(self, mu, std, return_kernel=False):
@@ -50,5 +50,4 @@ class Blur:
                 src=self.img,
                 ddepth=-1,
                 kernel=kernel)
-
-
+    

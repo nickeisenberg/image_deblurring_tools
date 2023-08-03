@@ -44,6 +44,7 @@ class Bennett:
     def psf(self, r):
         return self.a * (self.b ** 2 / (self.b ** 2 + (r) ** 2))
 
+
 class Model:
 
     def __init__(self):
@@ -185,12 +186,10 @@ class Model:
 
         return None
      
-    def kernel(self, width, height):
-        # w = np.arange(-int(width / 2), int(width / 2), 1)
-        # h = np.arange(-int(height / 2), int(height / 2), 1)
-        W, H = np.meshgrid(width, height)
+    def kernel(self, w_dom, h_dom):
+        W, H = np.meshgrid(w_dom, h_dom)
         return self.psf(W ** 2 + H ** 2)
-
+    
     def fit_nonblind(
             self,
             sharp_img,
@@ -245,22 +244,3 @@ class Model:
             self.update_weights(weights_vec, from_vec=True)
 
         return None
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -4,6 +4,7 @@ import scipy.linalg as alg
 from scipy.optimize import minimize
 import numpy as np
 import cv2
+from skimage.restoration import richardson_lucy
 
 import regressors as reg
 import create

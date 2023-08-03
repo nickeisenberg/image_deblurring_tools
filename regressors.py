@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import erf as _erf
+from scipy.linalg import norm
 from copy import deepcopy
 from scipy.optimize import minimize
 from copy import deepcopy
+import cv2
 
 class Erf:
     def __init__(self, a=1, b=1):
@@ -152,13 +154,9 @@ class Model:
             psf_ += self.reg[rn](*list(w)).psf(r)
         return psf_
     
-    def kernel(self, width, height):
-        w = np.arange(-int(width / 2), int(width / 2), 1)
-        h = np.arange(-int(height / 2), int(height / 2), 1)
-        W, H = np.meshgrid(w, h)
-        return self.psf(W ** 2 + H ** 2)
-
-    def fit_to_esf(self, data, domain=None, constraints=None):
+    def fit_to_esf(
+            self, data, domain=None, constraints=None, iters=1, verbose=False
+        ):
         if domain is None:
             domain = np.linspace(
                 -int(data.size / 2), int(data.size / 2), data.size
@@ -172,22 +170,97 @@ class Model:
             return np.sum(residual)
         
         if constraints is None:
-            constraints = np.repeat
-        weights_vec = minimize(_loss, self.weights_vec).x
+            constraints = []
+            for i in range(len(self.weights_vec_id)):
+                constraints.append((-np.inf, np.inf)), (0, np.inf)
+                constraints.append((0, np.inf))
+        
+        for i in range(iters):
+            if verbose:
+                print(f'Iteration: {i + 1} / {iters}')
+            weights_vec = minimize(
+                _loss, self.weights_vec, bounds=constraints
+            ).x
+            self.update_weights(weights_vec, from_vec=True)
 
-        self.update_weights(weights_vec, from_vec=True)
+        return None
+     
+    def kernel(self, width, height):
+        # w = np.arange(-int(width / 2), int(width / 2), 1)
+        # h = np.arange(-int(height / 2), int(height / 2), 1)
+        W, H = np.meshgrid(width, height)
+        return self.psf(W ** 2 + H ** 2)
+
+    def fit_nonblind(
+            self,
+            sharp_img,
+            blur_img,
+            w_dom,
+            h_dom,
+            constraints=None,
+            iters=1,
+            verbose=False
+        ):
+
+        W, H = np.meshgrid(w_dom, h_dom)
+        Z = W ** 2 + H ** 2
+
+        def _loss(
+                P,
+                sharp_img=sharp_img,
+                blur_img=blur_img,
+                ids=self.weights_vec_id,
+                constraints=constraints,
+                w_dom=w_dom,
+                h_dom=h_dom
+            ):
+            ker = np.zeros((w_dom.size, h_dom.size))
+
+            for w, rn in zip(
+                P.reshape((-1, 2)), self.weights_vec_id
+            ):
+                if self.reg_counts[rn] == 0:
+                    continue
+                ker += self.reg[rn](*list(w)).psf(Z)
+
+            blur_est = cv2.filter2D(
+                src=sharp_img,
+                ddepth=-1,
+                kernel=ker)
+
+            return norm(blur_img - blur_est, 2)
+
+        if constraints is None:
+            constraints = []
+            for i in range(len(self.weights_vec_id)):
+                constraints.append((-np.inf, np.inf)), (0, np.inf)
+                constraints.append((0, np.inf))
+
+        for i in range(iters):
+            if verbose:
+                print(f'Iteration: {i + 1} / {iters}')
+            weights_vec = minimize(
+                _loss, self.weights_vec, bounds=constraints
+            ).x
+            self.update_weights(weights_vec, from_vec=True)
 
         return None
 
-    def fit_nonblind(self, sharp, blur):
 
-        def _loss(P, data=data, domain=domain, ids=self.weights_vec_id):
-            residual = np.zeros(domain.size)
-            for w, rn in zip(P.reshape((-1, 2)), ids):
-                residual += self.reg[rn](*list(w)).esf(domain)
-            residual = np.abs(residual - data)
-            return np.sum(residual)
 
-        self.weights_vec = minimize(_loss, self.weights_vec).x
-        return None
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

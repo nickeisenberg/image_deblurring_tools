@@ -23,7 +23,18 @@ data -= m
 data /= (M - m)
 
 model.fit_to_esf(data, domain)
+
 model.fit_to_esf(data, domain)
+
+plt.plot(reg.Arctan(*model.weights['arctan'][1]).esf(np.linspace(-5, 5, 100)))
+plt.show()
+
+
+plt.imshow(model.kernel(50, 50))
+plt.show()
+
+plt.plot(model.psf(np.linspace(-50, 50, 1000)))
+plt.show()
 
 plt.plot(data)
 plt.plot(model.esf(domain))
@@ -44,6 +55,12 @@ model.add(2, reg.Erf, 'erf')
 # model.initialize(weights=weights)
 
 model.initialize()
+
+model.weights_vec
+
+model.weights_vec_id
+
+model.weights
 
 domain = np.linspace(-5, 5, 1000)
 data = 2.1 * np.arctan(2 * (domain)) + np.random.normal(0, .3, 1000)

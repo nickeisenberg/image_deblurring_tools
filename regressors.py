@@ -14,7 +14,7 @@ class Erf:
         return self.a * .5 * (_erf(self.b * x) + 1)
 
     def psf(self, r):
-        return (self.a * self.b / np.pi) * np.exp(-(self.b ** 2) * ((r) ** 2))
+        return (self.a * np.pi / (2 ** .5)) * np.exp(-(self.b ** 2) * ((r) ** 2))
 
 class Arctan:
     def __init__(self, a=1, b=1):
@@ -84,6 +84,30 @@ class Model:
 
         return None
 
+    def update_weights(self, weights, ids=None, from_vec=False):
+        if ids is None:
+            ids = self.weights_vec_id
+        else:
+            self.weights_vec_id = ids
+
+        if from_vec:
+            weights_dic = {reg: [] for reg in np.unique(ids)}
+            for w, rn  in zip(weights.reshape((-1, 2)), ids):
+                weights_dic[rn].append(w)
+            for k in weights_dic.keys():
+                weights_dic[k] = np.array(weights_dic[k])
+            self.weights = weights_dic
+            self.weights_vec = weights
+            
+        else:
+            self.weights = weights
+            ids = []
+            ws = []
+            for rn, w in self.weights.items():
+                ids.append(np.repeat(rn, self.reg_counts[rn]))
+                ws.append(w)
+            self.weights_vec = np.array(ws).reshape(-1)
+
     def add_initialize(self, count, weights, reg_class, reg_name):
 
         self.reg[reg_name] = reg_class
@@ -123,12 +147,18 @@ class Model:
         for w, rn in zip(
             self.weights_vec.reshape((-1, 2)), self.weights_vec_id
         ):
-            if self.reg_counts[rt] == 0:
+            if self.reg_counts[rn] == 0:
                 continue
             psf_ += self.reg[rn](*list(w)).psf(r)
         return psf_
+    
+    def kernel(self, width, height):
+        w = np.arange(-int(width / 2), int(width / 2), 1)
+        h = np.arange(-int(height / 2), int(height / 2), 1)
+        W, H = np.meshgrid(w, h)
+        return self.psf(W ** 2 + H ** 2)
 
-    def fit_to_esf(self, data, domain=None):
+    def fit_to_esf(self, data, domain=None, constraints=None):
         if domain is None:
             domain = np.linspace(
                 -int(data.size / 2), int(data.size / 2), data.size
@@ -140,6 +170,24 @@ class Model:
                 residual += self.reg[rn](*list(w)).esf(domain)
             residual = np.abs(residual - data)
             return np.sum(residual)
+        
+        if constraints is None:
+            constraints = np.repeat
+        weights_vec = minimize(_loss, self.weights_vec).x
+
+        self.update_weights(weights_vec, from_vec=True)
+
+        return None
+
+    def fit_nonblind(self, sharp, blur):
+
+        def _loss(P, data=data, domain=domain, ids=self.weights_vec_id):
+            residual = np.zeros(domain.size)
+            for w, rn in zip(P.reshape((-1, 2)), ids):
+                residual += self.reg[rn](*list(w)).esf(domain)
+            residual = np.abs(residual - data)
+            return np.sum(residual)
 
         self.weights_vec = minimize(_loss, self.weights_vec).x
         return None
+

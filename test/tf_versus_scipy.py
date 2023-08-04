@@ -41,7 +41,7 @@ def tf_loss(P):
 P = tf.Variable(initial_value=tf.constant(np.array(guess).astype(np.float64)))
 
 now = time.time()
-lr = .1
+lr = .05
 for i in range(2000):
     with tf.GradientTape() as tape:
         _loss = tf_loss(P)
